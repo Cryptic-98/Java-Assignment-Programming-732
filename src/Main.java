@@ -1,12 +1,31 @@
 import java.time.LocalDate;
 import java.util.Scanner;
 
+enum Role
+{
+    ADMIN("Admin"),
+    CASHIER("Cashier");
+
+    private final String displayName;
+
+    Role(String display_name)
+    {
+        this.displayName = display_name;
+    }
+
+    @Override
+    public String toString()
+    {
+        return this.displayName;
+    }
+}
+
 class User
 {
     int userId = 1000;
     String username;
     String password;
-    String role;
+    Role role;
     String fullName;
 
     public User() {}
@@ -26,7 +45,7 @@ class User
         this.password = password;
     }
 
-    public void setRole(String role)
+    public void setRole(Role role)
     {
         this.role = role;
     }
@@ -51,7 +70,7 @@ class User
         return this.password;
     }
 
-    public String getRole()
+    public Role getRole()
     {
         return this.role;
     }
@@ -424,7 +443,7 @@ class Main
             }
             while (role_option != 'A' && role_option != 'C');
 
-            String role = role_option == 'A' ? "Admin" : "Cashier";
+            Role role = role_option == 'A' ? Role.ADMIN : Role.CASHIER;
 
             User user = new User();
             user.setUserId();
