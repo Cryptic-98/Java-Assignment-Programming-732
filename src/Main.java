@@ -92,7 +92,7 @@ class Supplier
     int supplierId;
     String name;
     String contactPerson;
-    int phoneNumber;
+    String phoneNumber;
     String email;
     String address;
 
@@ -113,7 +113,7 @@ class Supplier
         this.contactPerson = contact_person;
     }
 
-    public void setPhoneNumber(int phone_number)
+    public void setPhoneNumber(String phone_number)
     {
         this.phoneNumber = phone_number;
     }
@@ -138,7 +138,7 @@ class Supplier
         return this.contactPerson;
     }
 
-    public int getPhoneNumber()
+    public String getPhoneNumber()
     {
         return this.phoneNumber;
     }
