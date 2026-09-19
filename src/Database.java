@@ -17,7 +17,7 @@ public class Database
         String password = System.getenv("HEALTHFIRST_DB_PASSWORD");
         if (password == null)
         {
-            password = "";
+            password = "Mang0D4ngo";
         }
 
         return DriverManager.getConnection(URL, username, password);

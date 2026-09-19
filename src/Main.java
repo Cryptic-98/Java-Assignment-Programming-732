@@ -1,4 +1,5 @@
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Scanner;
 
 enum Role
@@ -413,37 +414,67 @@ class SaleItem
 
 class Main
 {
+    private static String readName(Scanner input, String prompt)
+    {
+        while (true)
+        {
+            System.out.print(prompt);
+            String name = input.nextLine().trim();
+            if (name.matches("[\\p{L}]+(?:[ '-][\\p{L}]+)*"))
+            {
+                return name;
+            }
+
+            System.out.println("Please enter letters only, with optional spaces, hyphens, or apostrophes.");
+        }
+    }
+
+    private static String readPassword(Scanner input)
+    {
+        while (true)
+        {
+            System.out.print("Enter password: ");
+            String password = input.nextLine();
+            if (password.length() >= 8 && !password.matches(".*\\s.*"))
+            {
+                return password;
+            }
+
+            System.out.println("Password must contain at least 8 characters and no spaces.");
+        }
+    }
+
+    private static Role readRole(Scanner input)
+    {
+        while (true)
+        {
+            System.out.print("(A)dmin/(C)ashier: ");
+            String role_input = input.nextLine().trim().toUpperCase(Locale.ROOT);
+            if (role_input.equals("A"))
+            {
+                return Role.ADMIN;
+            }
+            if (role_input.equals("C"))
+            {
+                return Role.CASHIER;
+            }
+
+            System.out.print("Please enter A for Admin or C for Cashier: ");
+        }
+    }
 
     public static void main(String[] args)
     {
         try (Scanner input = new Scanner(System.in))
         {
-            System.out.print("Enter first name: ");
-            String first_name = input.nextLine().trim();
-
-            System.out.print("Enter last name: ");
-            String last_name = input.nextLine().trim();
+            String first_name = readName(input, "Enter first name: ");
+            String last_name = readName(input, "Enter last name: ");
 
             String username = first_name.substring(0, 1).toUpperCase() + last_name;
             String full_name = first_name + " " + last_name;
 
-            System.out.print("Enter password: ");
-            String password = input.nextLine();
-
-            System.out.print("(A)dmin/(C)ashier: ");
-            char role_option;
-            do
-            {
-                String role_input = input.nextLine().trim().toUpperCase();
-                role_option = role_input.isEmpty() ? '\0' : role_input.charAt(0);
-                if (role_option != 'A' && role_option != 'C')
-                {
-                    System.out.print("Please enter A for Admin or C for Cashier: ");
-                }
-            }
-            while (role_option != 'A' && role_option != 'C');
-
-            Role role = role_option == 'A' ? Role.ADMIN : Role.CASHIER;
+            String password = readPassword(input);
+            Role role = readRole(input);
 
             User user = new User();
             user.setUserId();
