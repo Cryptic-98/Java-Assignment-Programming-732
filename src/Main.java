@@ -36,6 +36,11 @@ class User
         this.userId++;
     }
 
+    public void setUserId(int user_id)
+    {
+        this.userId = user_id;
+    }
+
     public void setUsername(String username)
     {
         this.username = username;
@@ -132,6 +137,11 @@ class Supplier
     public int getSupplierId()
     {
         return this.supplierId;
+    }
+
+    public String getName()
+    {
+        return this.name;
     }
 
     public String getContactPerson()
