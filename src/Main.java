@@ -1,6 +1,7 @@
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Scanner;
+import javax.swing.SwingUtilities;
 
 enum Role
 {
@@ -475,26 +476,6 @@ class Main
 
     public static void main(String[] args)
     {
-        try (Scanner input = new Scanner(System.in))
-        {
-            String first_name = readName(input, "Enter first name: ");
-            String last_name = readName(input, "Enter last name: ");
-
-            String username = first_name.substring(0, 1).toUpperCase() + last_name;
-            String full_name = first_name + " " + last_name;
-
-            String password = readPassword(input);
-            Role role = readRole(input);
-
-            User user = new User();
-            user.setUserId();
-            user.setUsername(username);
-            user.setPassword(password);
-            user.setRole(role);
-            user.setFullName(full_name);
-
-            System.out.println(user);
-        }
-
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

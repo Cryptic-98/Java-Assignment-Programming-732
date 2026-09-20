@@ -296,6 +296,19 @@ class MedicineDAO
         return findMedicines("SELECT * FROM medicines ORDER BY medicine_id");
     }
 
+    public Medicine getMedicineById(int medicineId) throws SQLException
+    {
+        String sql = "SELECT * FROM medicines WHERE medicine_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql))
+        {
+            statement.setInt(1, medicineId);
+            try (ResultSet result = statement.executeQuery())
+            {
+                return result.next() ? mapMedicine(result) : null;
+            }
+        }
+    }
+
     public List<Medicine> searchMedicine(String name) throws SQLException
     {
         String sql = "SELECT * FROM medicines WHERE name LIKE ? ORDER BY name";
@@ -349,20 +362,25 @@ class MedicineDAO
         {
             while (result.next())
             {
-                Medicine medicine = new Medicine();
-                medicine.setMedicineId(result.getInt("medicine_id"));
-                medicine.setName(result.getString("name"));
-                medicine.setCompany(result.getString("company"));
-                medicine.setMedicineType(result.getString("medicine_type"));
-                medicine.setPrice(result.getDouble("price"));
-                medicine.setQuantityInStock(result.getInt("quantity_in_stock"));
-                medicine.setReorderLevel(result.getInt("reorder_level"));
-                medicine.setExpiryDate(result.getDate("expiry_date").toLocalDate());
-                medicine.setSupplierId(result.getInt("supplier_id"));
-                medicines.add(medicine);
+                medicines.add(mapMedicine(result));
             }
         }
         return medicines;
+    }
+
+    private Medicine mapMedicine(ResultSet result) throws SQLException
+    {
+        Medicine medicine = new Medicine();
+        medicine.setMedicineId(result.getInt("medicine_id"));
+        medicine.setName(result.getString("name"));
+        medicine.setCompany(result.getString("company"));
+        medicine.setMedicineType(result.getString("medicine_type"));
+        medicine.setPrice(result.getDouble("price"));
+        medicine.setQuantityInStock(result.getInt("quantity_in_stock"));
+        medicine.setReorderLevel(result.getInt("reorder_level"));
+        medicine.setExpiryDate(result.getDate("expiry_date").toLocalDate());
+        medicine.setSupplierId(result.getInt("supplier_id"));
+        return medicine;
     }
 
     private void setMedicineParameters(PreparedStatement statement, Medicine medicine)
