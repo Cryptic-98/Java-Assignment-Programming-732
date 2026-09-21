@@ -1,5 +1,13 @@
 USE HealthFirst;
 
+INSERT INTO users (username, password, role, full_name)
+VALUES
+    ("CToulise", "TrashB0at54", "Admin", "Christopher Toulise"),
+    ("RManamela", "LuckyNo07", "Cashier", "Rudy Manamela"),
+    -- not executed ↓
+    ("CRaslouw", "ManHunt3r", "Cashier", "Cobus Raslouw"),
+    ("TBaloi", "MonaL1sa765", "Admin", "Thapelo Baloi");
+
 INSERT INTO suppliers (name, contact_person, phone_number, email, address)
 VALUES
     ('TL Bio Pharmaceuticals', 'Thabo Molefe', '0113456789', 'info@tlbio.co.za', 'Johannesburg, Gauteng'),
