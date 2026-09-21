@@ -289,7 +289,7 @@ class Medicine
         }
 
         LocalDate today = LocalDate.now();
-        LocalDate warningDate = today.plusDays(14);
+        LocalDate warningDate = today.plusMonths(1);
         return !this.expiryDate.isBefore(today) && !this.expiryDate.isAfter(warningDate);
     }
 

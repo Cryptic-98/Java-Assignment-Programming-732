@@ -328,7 +328,7 @@ class MedicineDAO
     public List<Medicine> getExpiringMedicines() throws SQLException
     {
         return findMedicines("SELECT * FROM medicines "
-                + "WHERE expiry_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY) "
+                + "WHERE expiry_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 1 MONTH) "
                 + "ORDER BY expiry_date");
     }
 

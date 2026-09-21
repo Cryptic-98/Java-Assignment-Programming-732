@@ -1,23 +1,28 @@
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.JScrollPane;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Date;
+import javax.swing.*;
+import java.awt.*;
+import java.sql.*;
 import java.time.LocalDate;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+
+class WindowIcon
+{
+    private WindowIcon() {}
+
+    public static void apply(JFrame frame)
+    {
+        java.net.URL resource = WindowIcon.class.getResource("/protection.png");
+        ImageIcon icon = resource == null
+                ? new ImageIcon("src/protection.png")
+                : new ImageIcon(resource);
+
+        if (icon.getIconWidth() > 0 && icon.getIconHeight() > 0)
+        {
+            frame.setIconImage(icon.getImage());
+        }
+    }
+}
 
 class AuthService
 {
@@ -203,12 +208,14 @@ class LoginFrame extends JFrame
 
     public LoginFrame()
     {
+        WindowIcon.apply(this);
         setTitle("HealthFirst Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(350, 180);
+        setSize(400, 180);
         setLocationRelativeTo(null);
 
         JPanel form = new JPanel(new GridLayout(3, 2, 5, 5));
+        form.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         JButton loginButton = new JButton("Login");
         form.add(new JLabel("Username:"));
         form.add(usernameField);
@@ -223,6 +230,12 @@ class LoginFrame extends JFrame
 
     private void login()
     {
+        if (usernameField.getText().trim().isEmpty()
+                || passwordField.getPassword().length == 0)
+        {
+            JOptionPane.showMessageDialog(this, "Enter both username and password.");
+            return;
+        }
         try
         {
             User user = new AuthService().login(
@@ -255,6 +268,7 @@ class AdminDashboard extends JFrame
 {
     public AdminDashboard(User user)
     {
+        WindowIcon.apply(this);
         setTitle("Admin Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
@@ -280,15 +294,136 @@ class ManageMedicinesPanel extends JPanel
         JPanel controls = new JPanel(new BorderLayout(5, 5));
         JButton refresh = new JButton("Refresh");
         JButton search = new JButton("Search");
+        JButton add = new JButton("Add");
+        JButton update = new JButton("Update");
+        JButton delete = new JButton("Delete");
         controls.add(searchField, BorderLayout.CENTER);
         controls.add(search, BorderLayout.EAST);
         controls.add(refresh, BorderLayout.WEST);
+        JPanel actions = new JPanel();
+        actions.add(add);
+        actions.add(update);
+        actions.add(delete);
+        controls.add(actions, BorderLayout.SOUTH);
         add(controls, BorderLayout.NORTH);
         output.setEditable(false);
         add(new JScrollPane(output), BorderLayout.CENTER);
         refresh.addActionListener(event -> loadMedicines(null));
         search.addActionListener(event -> loadMedicines(searchField.getText().trim()));
+        add.addActionListener(event -> editMedicine(null));
+        update.addActionListener(event ->
+        {
+            Medicine medicine = selectedMedicine();
+            if (medicine != null)
+            {
+                editMedicine(medicine);
+            }
+        });
+        delete.addActionListener(event -> deleteMedicine());
         loadMedicines(null);
+    }
+
+    private Medicine selectedMedicine()
+    {
+        try
+        {
+            int id = Integer.parseInt(JOptionPane.showInputDialog(this, "Medicine ID:"));
+            MedicineDAO dao = new MedicineDAO();
+            try
+            {
+                return dao.getMedicineById(id);
+            }
+            finally
+            {
+                dao.closeConnection();
+            }
+        }
+        catch (Exception exception)
+        {
+            JOptionPane.showMessageDialog(this, "Invalid medicine ID.");
+            return null;
+        }
+    }
+
+    private void editMedicine(Medicine medicine)
+    {
+        boolean update = medicine != null;
+        JTextField name = new JTextField(update ? medicine.getName() : "");
+        JTextField company = new JTextField(update ? medicine.getCompany() : "");
+        JTextField type = new JTextField(update ? medicine.getMedicineType() : "");
+        JTextField price = new JTextField(update ? String.valueOf(medicine.getPrice()) : "");
+        JTextField quantity = new JTextField(update ? String.valueOf(medicine.getQuantityInStock()) : "0");
+        JTextField reorder = new JTextField(update ? String.valueOf(medicine.getReorderLevel()) : "10");
+        JTextField expiry = new JTextField(update ? String.valueOf(medicine.getExpiryDate()) : "");
+        JTextField supplier = new JTextField(update ? String.valueOf(medicine.getSupplierId()) : "");
+        JPanel form = new JPanel(new GridLayout(0, 2));
+        JTextField[] fields = {name, company, type, price, quantity, reorder, expiry, supplier};
+        String[] labels = {"Name", "Company", "Type", "Price", "Quantity", "Reorder level", "Expiry (YYYY-MM-DD)", "Supplier ID"};
+        for (int i = 0; i < fields.length; i++)
+        {
+            form.add(new JLabel(labels[i]));
+            form.add(fields[i]);
+        }
+        if (JOptionPane.showConfirmDialog(this, form, update ? "Update medicine" : "Add medicine",
+                JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+        {
+            return;
+        }
+        Medicine value = update ? medicine : new Medicine();
+        try
+        {
+            value.setName(name.getText().trim());
+            value.setCompany(company.getText().trim());
+            value.setMedicineType(type.getText().trim());
+            value.setPrice(Double.parseDouble(price.getText().trim()));
+            value.setQuantityInStock(Integer.parseInt(quantity.getText().trim()));
+            value.setReorderLevel(Integer.parseInt(reorder.getText().trim()));
+            value.setExpiryDate(LocalDate.parse(expiry.getText().trim()));
+            value.setSupplierId(Integer.parseInt(supplier.getText().trim()));
+            MedicineDAO dao = new MedicineDAO();
+            try
+            {
+                if (!(update ? dao.updateMedicine(value) : dao.addMedicine(value)))
+                {
+                    throw new SQLException("No medicine was changed.");
+                }
+            }
+            finally
+            {
+                dao.closeConnection();
+            }
+            loadMedicines(null);
+        }
+        catch (Exception exception)
+        {
+            JOptionPane.showMessageDialog(this, "Unable to save medicine: " + exception.getMessage());
+        }
+    }
+
+    private void deleteMedicine()
+    {
+        String value = JOptionPane.showInputDialog(this, "Medicine ID to delete:");
+        try
+        {
+            int id = Integer.parseInt(value);
+            MedicineDAO dao = new MedicineDAO();
+            try
+            {
+                if (!dao.deleteMedicine(id))
+                {
+                    throw new SQLException("Medicine was not found.");
+                }
+            }
+            finally
+            {
+                dao.closeConnection();
+            }
+            loadMedicines(null);
+        }
+        catch (Exception exception)
+        {
+            JOptionPane.showMessageDialog(this, "Unable to delete medicine: " + exception.getMessage());
+        }
     }
 
     private void loadMedicines(String searchTerm)
@@ -327,11 +462,133 @@ class ManageSuppliersPanel extends JPanel
     {
         setLayout(new BorderLayout(5, 5));
         JButton refresh = new JButton("Refresh suppliers");
+        JButton add = new JButton("Add");
+        JButton update = new JButton("Update");
+        JButton delete = new JButton("Delete");
+        JPanel controls = new JPanel();
+        controls.add(refresh);
+        controls.add(add);
+        controls.add(update);
+        controls.add(delete);
         output.setEditable(false);
-        add(refresh, BorderLayout.NORTH);
+        add(controls, BorderLayout.NORTH);
         add(new JScrollPane(output), BorderLayout.CENTER);
         refresh.addActionListener(event -> loadSuppliers());
+        add.addActionListener(event -> editSupplier(null));
+        update.addActionListener(event ->
+        {
+            Supplier supplier = selectedSupplier();
+            if (supplier != null)
+            {
+                editSupplier(supplier);
+            }
+        });
+        delete.addActionListener(event -> deleteSupplier());
         loadSuppliers();
+    }
+
+    private Supplier selectedSupplier()
+    {
+        try
+        {
+            int id = Integer.parseInt(JOptionPane.showInputDialog(this, "Supplier ID:"));
+            SupplierDAO dao = new SupplierDAO();
+            try
+            {
+                for (Supplier supplier : dao.getAllSuppliers())
+                {
+                    if (supplier.getSupplierId() == id)
+                    {
+                        return supplier;
+                    }
+                }
+            }
+            finally
+            {
+                dao.closeConnection();
+            }
+        }
+        catch (Exception ignored)
+        {
+            // The edit dialog reports a missing selection.
+        }
+        return null;
+    }
+
+    private void editSupplier(Supplier supplier)
+    {
+        boolean update = supplier != null;
+        JTextField[] fields = {
+                new JTextField(update ? supplier.getName() : ""),
+                new JTextField(update ? supplier.getContactPerson() : ""),
+                new JTextField(update ? supplier.getPhoneNumber() : ""),
+                new JTextField(update ? supplier.getEmail() : ""),
+                new JTextField(update ? supplier.getAddress() : "")
+        };
+        String[] labels = {"Name", "Contact person", "Phone", "Email", "Address"};
+        JPanel form = new JPanel(new GridLayout(0, 2));
+        for (int i = 0; i < fields.length; i++)
+        {
+            form.add(new JLabel(labels[i]));
+            form.add(fields[i]);
+        }
+        if (JOptionPane.showConfirmDialog(this, form, update ? "Update supplier" : "Add supplier",
+                JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+        {
+            return;
+        }
+        Supplier value = update ? supplier : new Supplier();
+        value.setName(fields[0].getText().trim());
+        value.setContactPerson(fields[1].getText().trim());
+        value.setPhoneNumber(fields[2].getText().trim());
+        value.setEmail(fields[3].getText().trim());
+        value.setAddress(fields[4].getText().trim());
+        SupplierDAO dao = null;
+        try
+        {
+            dao = new SupplierDAO();
+            if (!(update ? dao.updateSupplier(value) : dao.addSupplier(value)))
+            {
+                throw new SQLException("No supplier was changed.");
+            }
+            loadSuppliers();
+        }
+        catch (SQLException exception)
+        {
+            JOptionPane.showMessageDialog(this, "Unable to save supplier: " + exception.getMessage());
+        }
+        finally
+        {
+            if (dao != null)
+            {
+                dao.closeConnection();
+            }
+        }
+    }
+
+    private void deleteSupplier()
+    {
+        try
+        {
+            int id = Integer.parseInt(JOptionPane.showInputDialog(this, "Supplier ID to delete:"));
+            SupplierDAO dao = new SupplierDAO();
+            try
+            {
+                if (!dao.deleteSupplier(id))
+                {
+                    throw new SQLException("Supplier was not found.");
+                }
+            }
+            finally
+            {
+                dao.closeConnection();
+            }
+            loadSuppliers();
+        }
+        catch (Exception exception)
+        {
+            JOptionPane.showMessageDialog(this, "Unable to delete supplier: " + exception.getMessage());
+        }
     }
 
     private void loadSuppliers()
@@ -368,11 +625,89 @@ class ManageUsersPanel extends JPanel
     {
         setLayout(new BorderLayout(5, 5));
         JButton refresh = new JButton("Refresh cashiers");
+        JButton add = new JButton("Add cashier");
+        JButton delete = new JButton("Delete cashier");
+        JPanel controls = new JPanel();
+        controls.add(refresh);
+        controls.add(add);
+        controls.add(delete);
         output.setEditable(false);
-        add(refresh, BorderLayout.NORTH);
+        add(controls, BorderLayout.NORTH);
         add(new JScrollPane(output), BorderLayout.CENTER);
         refresh.addActionListener(event -> loadUsers());
+        add.addActionListener(event -> addUser());
+        delete.addActionListener(event -> deleteUser());
         loadUsers();
+    }
+
+    private void addUser()
+    {
+        JTextField username = new JTextField();
+        JPasswordField password = new JPasswordField();
+        JTextField fullName = new JTextField();
+        JPanel form = new JPanel(new GridLayout(0, 2));
+        form.add(new JLabel("Username"));
+        form.add(username);
+        form.add(new JLabel("Password"));
+        form.add(password);
+        form.add(new JLabel("Full name"));
+        form.add(fullName);
+        if (JOptionPane.showConfirmDialog(this, form, "Add cashier",
+                JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+        {
+            return;
+        }
+        User user = new User();
+        user.setUsername(username.getText().trim());
+        user.setPassword(new String(password.getPassword()));
+        user.setFullName(fullName.getText().trim());
+        user.setRole(Role.CASHIER);
+        UserDAO dao = null;
+        try
+        {
+            dao = new UserDAO();
+            if (!dao.addUser(user))
+            {
+                throw new SQLException("Cashier was not added.");
+            }
+            loadUsers();
+        }
+        catch (SQLException exception)
+        {
+            JOptionPane.showMessageDialog(this, "Unable to add cashier: " + exception.getMessage());
+        }
+        finally
+        {
+            if (dao != null)
+            {
+                dao.closeConnection();
+            }
+        }
+    }
+
+    private void deleteUser()
+    {
+        try
+        {
+            int id = Integer.parseInt(JOptionPane.showInputDialog(this, "Cashier user ID to delete:"));
+            UserDAO dao = new UserDAO();
+            try
+            {
+                if (!dao.deleteUser(id))
+                {
+                    throw new SQLException("Cashier was not found.");
+                }
+            }
+            finally
+            {
+                dao.closeConnection();
+            }
+            loadUsers();
+        }
+        catch (Exception exception)
+        {
+            JOptionPane.showMessageDialog(this, "Unable to delete cashier: " + exception.getMessage());
+        }
     }
 
     private void loadUsers()
@@ -486,6 +821,7 @@ class CashierDashboard extends JFrame
 {
     public CashierDashboard(User user)
     {
+        WindowIcon.apply(this);
         setTitle("Cashier Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
@@ -513,6 +849,7 @@ class POSPanel extends JPanel
         JPanel controls = new JPanel(new GridLayout(1, 5, 5, 5));
         JButton add = new JButton("Add item");
         JButton checkout = new JButton("Checkout");
+        JButton clear = new JButton("Clear cart");
         controls.add(new JLabel("Medicine ID"));
         controls.add(medicineIdField);
         controls.add(new JLabel("Quantity"));
@@ -522,8 +859,10 @@ class POSPanel extends JPanel
         cartOutput.setEditable(false);
         add(new JScrollPane(cartOutput), BorderLayout.CENTER);
         add(checkout, BorderLayout.SOUTH);
+        add(clear, BorderLayout.WEST);
         add.addActionListener(event -> addItem());
         checkout.addActionListener(event -> checkout());
+        clear.addActionListener(event -> clearCart());
     }
 
     private void addItem()
@@ -564,7 +903,7 @@ class POSPanel extends JPanel
         try
         {
             Sale sale = new SalesService().processSale(cartItems, userId);
-            new BillWindow(sale).setVisible(true);
+            new BillWindow(sale, new ArrayList<>(cartItems)).setVisible(true);
             cartItems.clear();
             cartOutput.setText("");
         }
@@ -573,32 +912,114 @@ class POSPanel extends JPanel
             JOptionPane.showMessageDialog(this, exception.getMessage());
         }
     }
+
+    private void clearCart()
+    {
+        cartItems.clear();
+        cartOutput.setText("");
+    }
 }
 
 class BillWindow extends JFrame
 {
-    public BillWindow(Sale sale)
+    public BillWindow(Sale sale, List<SaleItem> items)
     {
+        WindowIcon.apply(this);
         setTitle("Sale " + sale.getSaleId());
         setSize(400, 300);
         setLocationRelativeTo(null);
-        add(new JLabel(sale.toString()));
+        StringBuilder billText = new StringBuilder(sale.toString()).append("\n\nItems:\n");
+        for (SaleItem item : items)
+        {
+            billText.append("Medicine ").append(item.getMedicineId())
+                    .append(" x ").append(item.getQuantitySold())
+                    .append(" @ ").append(item.getPriceAtSale()).append("\n");
+        }
+        JTextArea bill = new JTextArea(billText.toString());
+        bill.setEditable(false);
+        JButton save = new JButton("Save");
+        JButton print = new JButton("Print");
+        JPanel actions = new JPanel();
+        actions.add(save);
+        actions.add(print);
+        save.addActionListener(event ->
+        {
+            try
+            {
+                JFileChooser chooser = new JFileChooser();
+                if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION)
+                {
+                    Files.writeString(chooser.getSelectedFile().toPath(), bill.getText());
+                    JOptionPane.showMessageDialog(this, "Bill saved.");
+                }
+            }
+            catch (Exception exception)
+            {
+                JOptionPane.showMessageDialog(this, "Unable to save bill: " + exception.getMessage());
+            }
+        });
+        print.addActionListener(event ->
+        {
+            try
+            {
+                if (bill.print())
+                {
+                    JOptionPane.showMessageDialog(this, "Bill sent to printer.");
+                }
+            }
+            catch (Exception exception)
+            {
+                JOptionPane.showMessageDialog(this, "Unable to print bill: " + exception.getMessage());
+            }
+        });
+        add(new JScrollPane(bill), BorderLayout.CENTER);
+        add(actions, BorderLayout.SOUTH);
     }
 }
 
 class StockCheckPanel extends JPanel
 {
     private final javax.swing.JTextArea output = new javax.swing.JTextArea();
+    private final JTextField medicineId = new JTextField();
 
     public StockCheckPanel()
     {
         setLayout(new BorderLayout(5, 5));
         JButton refresh = new JButton("Refresh stock warnings");
+        JButton check = new JButton("Check medicine");
+        JPanel controls = new JPanel(new BorderLayout(5, 5));
+        controls.add(medicineId, BorderLayout.CENTER);
+        controls.add(check, BorderLayout.EAST);
+        controls.add(refresh, BorderLayout.WEST);
         output.setEditable(false);
-        add(refresh, BorderLayout.NORTH);
+        add(controls, BorderLayout.NORTH);
         add(new JScrollPane(output), BorderLayout.CENTER);
         refresh.addActionListener(event -> loadWarnings());
+        check.addActionListener(event -> checkMedicine());
         loadWarnings();
+    }
+
+    private void checkMedicine()
+    {
+        MedicineDAO dao = null;
+        try
+        {
+            int id = Integer.parseInt(medicineId.getText().trim());
+            dao = new MedicineDAO();
+            Medicine medicine = dao.getMedicineById(id);
+            output.setText(medicine == null ? "Medicine not found." : medicine.toString());
+        }
+        catch (Exception exception)
+        {
+            output.setText("Unable to check medicine: " + exception.getMessage());
+        }
+        finally
+        {
+            if (dao != null)
+            {
+                dao.closeConnection();
+            }
+        }
     }
 
     private void loadWarnings()
